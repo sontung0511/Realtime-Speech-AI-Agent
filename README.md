@@ -2,23 +2,23 @@
 
 ## Overview
 
-Realtime Speech AI Agent là hệ thống AI có khả năng nghe audio/speech theo thời gian thực, tự động chuyển giọng nói thành văn bản, nhận diện ngôn ngữ, hiểu ngữ cảnh hội thoại và trả lời gần như ngay lập tức.
+Realtime Speech AI Agent is a system that can listen to audio or speech in real time, automatically convert speech to text, detect the spoken language, understand conversational context, and generate responses almost immediately.
 
-Mục tiêu của project là xây dựng một AI agent có thể:
+The goal of this project is to build an AI agent that can:
 
-- Nghe giọng nói realtime từ microphone hoặc audio stream
-- Detect ngôn ngữ đang nói
-- Chuyển speech sang text theo từng đoạn nhỏ
-- Hiểu ngữ cảnh của câu chuyện hoặc hội thoại
-- Ghi chú nội dung quan trọng
-- Sinh câu trả lời realtime
-- Tùy chọn đọc câu trả lời bằng giọng nói
+- Listen to real-time speech from a microphone or audio stream
+- Detect the spoken language
+- Convert speech to text in small streaming segments
+- Understand the context of a conversation or story
+- Take notes from important information
+- Generate real-time AI responses
+- Optionally speak the response back using text-to-speech
 
 ---
 
 ## Core Idea
 
-Thay vì upload audio rồi xử lý sau, hệ thống hoạt động theo dạng streaming pipeline.
+Instead of uploading an audio file and processing it later, the system works as a real-time streaming pipeline.
 
 ```text
 Microphone / Audio Stream
