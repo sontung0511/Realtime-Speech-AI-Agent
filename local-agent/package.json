@@ -1,0 +1,19 @@
+{
+  "name": "realtime-speech-local-agent",
+  "version": "1.0.0",
+  "description": "Local agent captures system/tab audio, streams to AI for realtime transcript + translate + suggest",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "ui": "node src/ui-server.js",
+    "capture": "node src/index.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0",
+    "express": "^4.18.0",
+    "dotenv": "^16.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

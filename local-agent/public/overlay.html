@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Meeting Assistant - Overlay</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: rgba(15, 15, 30, 0.95);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        /* Compact header */
+        .header {
+            background: rgba(26, 26, 60, 0.98);
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid #2a2a5e;
+            cursor: move;
+            user-select: none;
+        }
+        .header h1 { font-size: 14px; color: #7b8cff; }
+        .header-right { display: flex; gap: 8px; align-items: center; }
+
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-dot.active { background: #4caf50; animation: blink 1.5s infinite; }
+        .status-dot.inactive { background: #666; }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .badge {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-lang { background: #1a2a4a; color: #7b8cff; }
+        .badge-status { background: #1a3a1a; color: #4caf50; }
+
+        /* Panels */
+        .content { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+
+        .panel {
+            background: rgba(26, 26, 46, 0.95);
+            border: 1px solid #2a2a4e;
+            border-radius: 8px;
+            padding: 8px 12px;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .panel-title {
+            font-size: 11px;
+            color: #7b8cff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .panel-toggle {
+            font-size: 10px;
+            color: #666;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+
+        /* Transcript */
+        .transcript-box {
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .transcript-line {
+            padding: 3px 0;
+            border-bottom: 1px solid rgba(42, 42, 78, 0.5);
+        }
+        .transcript-line.partial { color: #888; font-style: italic; }
+        .transcript-line.final { color: #e0e0e0; }
+        .lang-tag {
+            font-size: 10px;
+            color: #7b8cff;
+            background: rgba(123, 140, 255, 0.1);
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin-right: 6px;
+        }
+
+        /* AI Suggestion */
+        .suggest-box {
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .suggest-text { color: #a8d8a8; }
+        .suggest-thinking {
+            color: #666;
+            font-style: italic;
+        }
+
+        /* Notes */
+        .notes-box {
+            max-height: 80px;
+            overflow-y: auto;
+        }
+        .note-item {
+            font-size: 12px;
+            color: #ffc107;
+            padding: 2px 0;
+        }
+        .note-item::before { content: "📝 "; }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 8px;
+            padding: 4px 0;
+            justify-content: center;
+        }
+        .btn {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-capture { background: #4caf50; color: white; }
+        .btn-capture.active { background: #f44336; animation: pulse 1.5s infinite; }
+        .btn-clear { background: #333; color: #ccc; }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.3); }
+            50% { box-shadow: 0 0 0 6px rgba(244, 67, 54, 0); }
+        }
+
+        /* Stats bar */
+        .stats {
+            font-size: 10px;
+            color: #555;
+            text-align: center;
+            padding: 4px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <div class="header" id="dragHandle">
+        <h1>🎧 AI Meeting Assistant</h1>
+        <div class="header-right">
+            <span id="langBadge" class="badge badge-lang">--</span>
+            <span class="status-dot inactive" id="statusDot"></span>
+        </div>
+    </div>
+
+    <div class="content">
+        <!-- Live Transcript -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">🎙 Live Transcript</span>
+                <button class="panel-toggle" onclick="clearTranscripts()">clear</button>
+            </div>
+            <div id="transcriptBox" class="transcript-box">
+                <div style="color:#555; font-style:italic; font-size:12px;">Waiting for audio...</div>
+            </div>
+        </div>
+
+        <!-- AI Suggestion / Translation -->
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">💡 AI Suggestion</span>
+            </div>
+            <div id="suggestBox" class="suggest-box">
+                <span class="suggest-thinking">Listening...</span>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="panel" id="notesPanel">
+            <div class="panel-header">
+                <span class="panel-title">📝 Key Notes</span>
+                <span id="noteCount" style="font-size:10px; color:#666;">0</span>
+            </div>
+            <div id="notesBox" class="notes-box">
+                <span style="color:#555; font-size:12px; font-style:italic;">No notes yet</span>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button id="btnCapture" class="btn btn-capture" onclick="toggleCapture()">▶ Start</button>
+            <button class="btn btn-clear" onclick="clearAll()">🗑 Clear</button>
+        </div>
+
+        <div class="stats" id="stats">Not connected</div>
+    </div>
+
+    <script>
+    (function() {
+        "use strict";
+
+        let ws = null;
+        let isCapturing = false;
+        let currentAnswer = "";
+        let noteCount = 0;
+        let chunkCount = 0;
+        let transcriptCount = 0;
+        let hasTranscripts = false;
+        let hasNotes = false;
+
+        const transcriptBox = document.getElementById("transcriptBox");
+        const suggestBox = document.getElementById("suggestBox");
+        const notesBox = document.getElementById("notesBox");
+        const noteCountEl = document.getElementById("noteCount");
+        const btnCapture = document.getElementById("btnCapture");
+        const statusDot = document.getElementById("statusDot");
+        const langBadge = document.getElementById("langBadge");
+        const statsEl = document.getElementById("stats");
+
+        // Connect to local UI server's WebSocket
+        function connect() {
+            const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+            ws = new WebSocket(protocol + "//" + location.host + "/ws");
+
+            ws.onopen = function() {
+                statsEl.textContent = "Connected to local agent";
+                statusDot.className = "status-dot active";
+            };
+
+            ws.onmessage = function(e) {
+                try {
+                    const evt = JSON.parse(e.data);
+                    handleEvent(evt);
+                } catch (err) {}
+            };
+
+            ws.onclose = function() {
+                statusDot.className = "status-dot inactive";
+                statsEl.textContent = "Disconnected - reconnecting...";
+                setTimeout(connect, 2000);
+            };
+
+            ws.onerror = function() {};
+        }
+
+        function handleEvent(evt) {
+            switch (evt.type) {
+                case "partial_text":
+                    showPartial(evt.lang, evt.text);
+                    break;
+                case "final_text":
+                    showFinal(evt.lang, evt.text);
+                    transcriptCount++;
+                    updateStats();
+                    break;
+                case "answer_delta":
+                    appendSuggestion(evt.text);
+                    break;
+                case "answer_completed":
+                    completeSuggestion(evt.text);
+                    break;
+                case "note_created":
+                    addNote(evt.text);
+                    break;
+                case "capture_status":
+                    updateCaptureStatus(evt.active, evt.chunks);
+                    break;
+                case "error":
+                    showError(evt.code + ": " + evt.message);
+                    break;
+            }
+        }
+
+        function showPartial(lang, text) {
+            updateLang(lang);
+            if (!hasTranscripts) { transcriptBox.innerHTML = ""; hasTranscripts = true; }
+            let el = transcriptBox.querySelector(".partial");
+            if (!el) {
+                el = document.createElement("div");
+                el.className = "transcript-line partial";
+                transcriptBox.appendChild(el);
+            }
+            el.innerHTML = '<span class="lang-tag">' + (lang||"?") + '</span>' + esc(text);
+            transcriptBox.scrollTop = transcriptBox.scrollHeight;
+        }
+
+        function showFinal(lang, text) {
+            updateLang(lang);
+            if (!hasTranscripts) { transcriptBox.innerHTML = ""; hasTranscripts = true; }
+            const partial = transcriptBox.querySelector(".partial");
+            if (partial) partial.remove();
+
+            const div = document.createElement("div");
+            div.className = "transcript-line final";
+            div.innerHTML = '<span class="lang-tag">' + (lang||"?") + '</span>' + esc(text);
+            transcriptBox.appendChild(div);
+            transcriptBox.scrollTop = transcriptBox.scrollHeight;
+
+            // Keep only last 50 lines
+            while (transcriptBox.children.length > 50) {
+                transcriptBox.removeChild(transcriptBox.firstChild);
+            }
+        }
+
+        function appendSuggestion(text) {
+            if (suggestBox.querySelector(".suggest-thinking")) {
+                suggestBox.innerHTML = "";
+                currentAnswer = "";
+            }
+            let el = suggestBox.querySelector(".suggest-text");
+            if (!el) {
+                el = document.createElement("div");
+                el.className = "suggest-text";
+                suggestBox.appendChild(el);
+            }
+            currentAnswer += text;
+            el.textContent = currentAnswer;
+            suggestBox.scrollTop = suggestBox.scrollHeight;
+        }
+
+        function completeSuggestion(text) {
+            currentAnswer = "";
+            let el = suggestBox.querySelector(".suggest-text");
+            if (!el) {
+                suggestBox.innerHTML = "";
+                el = document.createElement("div");
+                el.className = "suggest-text";
+                suggestBox.appendChild(el);
+            }
+            el.textContent = text;
+
+            // Add separator for next suggestion
+            const sep = document.createElement("hr");
+            sep.style.cssText = "border:none;border-top:1px solid #2a2a4e;margin:6px 0;";
+            suggestBox.appendChild(sep);
+        }
+
+        function addNote(text) {
+            if (!hasNotes) { notesBox.innerHTML = ""; hasNotes = true; }
+            noteCount++;
+            noteCountEl.textContent = noteCount;
+            const div = document.createElement("div");
+            div.className = "note-item";
+            div.textContent = text;
+            notesBox.appendChild(div);
+            notesBox.scrollTop = notesBox.scrollHeight;
+        }
+
+        function updateLang(lang) {
+            if (lang) langBadge.textContent = lang.toUpperCase();
+        }
+
+        function updateCaptureStatus(active, chunks) {
+            isCapturing = active;
+            chunkCount = chunks || 0;
+            if (active) {
+                btnCapture.textContent = "⏹ Stop";
+                btnCapture.classList.add("active");
+                statusDot.className = "status-dot active";
+            } else {
+                btnCapture.textContent = "▶ Start";
+                btnCapture.classList.remove("active");
+            }
+            updateStats();
+        }
+
+        function updateStats() {
+            statsEl.textContent = "Chunks: " + chunkCount + " | Transcripts: " + transcriptCount + " | Notes: " + noteCount;
+        }
+
+        function showError(msg) {
+            const div = document.createElement("div");
+            div.style.cssText = "color:#f44;font-size:11px;padding:4px;";
+            div.textContent = "⚠ " + msg;
+            suggestBox.appendChild(div);
+        }
+
+        function esc(text) {
+            const d = document.createElement("div");
+            d.appendChild(document.createTextNode(text));
+            return d.innerHTML;
+        }
+
+        // Public functions
+        window.toggleCapture = function() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: isCapturing ? "stop_capture" : "start_capture" }));
+            }
+        };
+
+        window.clearTranscripts = function() {
+            transcriptBox.innerHTML = '<div style="color:#555;font-style:italic;font-size:12px;">Waiting for audio...</div>';
+            hasTranscripts = false;
+        };
+
+        window.clearAll = function() {
+            window.clearTranscripts();
+            suggestBox.innerHTML = '<span class="suggest-thinking">Listening...</span>';
+            notesBox.innerHTML = '<span style="color:#555;font-size:12px;font-style:italic;">No notes yet</span>';
+            hasNotes = false;
+            noteCount = 0;
+            transcriptCount = 0;
+            noteCountEl.textContent = "0";
+            currentAnswer = "";
+            updateStats();
+        };
+
+        // Init
+        connect();
+    })();
+    </script>
+</body>
+</html>
