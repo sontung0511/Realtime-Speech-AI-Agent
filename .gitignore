@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+
+# Data
+data/
+*.db
+
+# Bot
+bot/node_modules/
+bot/.env
+bot-join-error.png
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Build
+server/cmd/server/server
+*.exe
+
+# Logs
+*.log

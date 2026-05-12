@@ -1,0 +1,19 @@
+{
+  "name": "realtime-speech-ai-bot",
+  "version": "1.0.0",
+  "description": "Google Meet bot that joins as participant and streams audio to AI agent",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "join": "node src/index.js"
+  },
+  "dependencies": {
+    "puppeteer": "^22.0.0",
+    "ws": "^8.16.0",
+    "dotenv": "^16.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
